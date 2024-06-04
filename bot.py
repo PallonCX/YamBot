@@ -5,29 +5,43 @@ from telegram import ForceReply, Update, InlineKeyboardButton, InlineKeyboardMar
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 
 # Command handlers
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send a message when the command /start is issued."""
+    keyboard = [
+        [InlineKeyboardButton("Create", callback_data="create")],
+        [InlineKeyboardButton("Comment", callback_data="comment")],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update.message.reply_text("Welcome! Choose an option:", reply_markup=reply_markup)
+
 async def create_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle the /create command."""
-    chat_id = update.effective_chat.id
-    message_id = update.message.message_id
     original_message = update.message.text[8:]  # Remove the '/create ' part
 
-    logger.info(f"Creating new special message: {original_message} in chat ID: {chat_id}")
+    if original_message:
+        chat_id = update.effective_chat.id
+        message_id = update.message.message_id
 
-    # Create a unique identifier for the special message
-    unique_id = f"{chat_id}-{message_id}"
+        logger.info(f"Creating new special message: {original_message} in chat ID: {chat_id}")
 
-    # Store the special message in the database
-    c.execute('INSERT INTO comments (unique_id, original_message) VALUES (?, ?)',
-              (unique_id, original_message))
-    conn.commit()
+        # Create a unique identifier for the special message
+        unique_id = f"{chat_id}-{message_id}"
 
-    # Create an inline keyboard button with a link to your GitHub page
-    github_button = InlineKeyboardButton("Visit GitHub", url="https://github.com/PallonCX/")
-    reply_markup = InlineKeyboardMarkup.from_button(github_button)
+        # Store the special message in the database
+        c.execute('INSERT INTO comments (unique_id, original_message) VALUES (?, ?)',
+                  (unique_id, original_message))
+        conn.commit()
 
-    # Send the special message with the inline keyboard button and unique ID
-    message_text = f"Special Message ID: {unique_id}\n{original_message}"
-    await update.message.reply_text(message_text, reply_markup=reply_markup)
+        # Create an inline keyboard button with a link to your GitHub page
+        reply_button = InlineKeyboardButton("Reply", url=f"https://t.me/yam_fm_bot")
+        reply_markup = InlineKeyboardMarkup.from_button(reply_button)
+
+        # Send the special message with the inline keyboard button and unique ID
+        message_text = f"Special Message ID: {unique_id}\n{original_message}"
+        await update.message.reply_text(message_text, reply_markup=reply_markup)
+    else:
+        await update.message.reply_text("Please provide a non-empty description for the special message.")
 
 async def comment_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle the /comment command."""
@@ -51,7 +65,7 @@ async def comment_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             c.execute('UPDATE comments SET comment = ? WHERE unique_id = ?', (new_comment, unique_id))
             conn.commit()
 
-            await update.message.reply_text(f"Your comment on '{original_message}':\n{new_comment}")
+            await update.message.reply_text(f"Your new comment on '{original_message}':\n{comment_text}")
         else:
             await update.message.reply_text("Invalid special message ID. Please provide a valid ID.")
     else:
@@ -103,6 +117,7 @@ def main() -> None:
     application = Application.builder().token(TOKEN).build()
 
     # On different commands - answer in Telegram
+    application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("create", create_command))
     application.add_handler(CommandHandler("comment", comment_command))
 
