@@ -6,3 +6,6 @@ config.py
 
 # Ignore Python bytecode cache
 __pycache__/
+
+# Ignore local database files
+comments.db
