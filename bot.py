@@ -73,7 +73,7 @@ async def create_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         reply_markup = InlineKeyboardMarkup([[reply_button], [share_button]])
 
         # Send the special message with the inline keyboard button and unique ID
-        message_text = f"Special Message ID: {unique_id}\n{original_message}"
+        message_text = f"{original_message}\n\nSpecial Message ID: {unique_id}"
         await update.message.reply_text(message_text, reply_markup=reply_markup)
         logger.info(f"Sent special message with ID: {unique_id}")
     else:
