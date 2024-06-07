@@ -1,8 +1,10 @@
 import logging
 import sqlite3
 from config import TOKEN
-from telegram import ForceReply, Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputTextMessageContent
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, InlineQueryHandler, filters
+from telegram import InlineQueryResultArticle
+from uuid import uuid4
 
 # Command handlers
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -25,6 +27,7 @@ async def create_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if original_message:
         chat_id = update.effective_chat.id
         message_id = update.message.message_id
+        user_id = update.message.from_user.id
 
         logger.info(f"Creating new special message: {original_message} in chat ID: {chat_id}")
 
@@ -33,8 +36,8 @@ async def create_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
         # Store the special message in the database
         try:
-            c.execute('INSERT INTO comments (unique_id, original_message) VALUES (?, ?)',
-                      (unique_id, original_message))
+            c.execute('INSERT INTO comments (unique_id, original_message, user_id) VALUES (?, ?, ?)',
+                      (unique_id, original_message, user_id))
             conn.commit()
             logger.info(f"Stored special message with ID: {unique_id}")
         except Exception as e:
@@ -45,8 +48,8 @@ async def create_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         # Create inline keyboard buttons
         reply_button = InlineKeyboardButton("Reply", url=f"https://t.me/yam_fm_bot")
         share_button = InlineKeyboardButton("Share", switch_inline_query=unique_id)
-        reply_markup = InlineKeyboardMarkup([[reply_button, share_button]])
-        
+        reply_markup = InlineKeyboardMarkup([[reply_button], [share_button]])
+
         # Send the special message with the inline keyboard button and unique ID
         message_text = f"Special Message ID: {unique_id}\n{original_message}"
         await update.message.reply_text(message_text, reply_markup=reply_markup)
@@ -88,6 +91,60 @@ async def comment_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         logger.warning("Invalid command format for /comment command")
         await update.message.reply_text("Invalid command format. Use /comment <unique_id> <comment_text>")
 
+async def view_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle the /view command."""
+    logger.info("Received /view command")
+    user_id = update.message.from_user.id
+
+    # Query the database for messages created by this user
+    c.execute('SELECT unique_id, original_message FROM comments WHERE user_id = ?', (user_id,))
+    results = c.fetchall()
+
+    if results:
+        messages = "\n\n".join([f"ID: {unique_id}\n{original_message}" for unique_id, original_message in results])
+        await update.message.reply_text(f"Here are your special messages:\n\n{messages}")
+        logger.info(f"Sent list of special messages to user ID: {user_id}")
+    else:
+        await update.message.reply_text("You haven't created any special messages yet.")
+        logger.info(f"No special messages found for user ID: {user_id}")
+
+async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle the inline query."""
+    query = update.inline_query.query
+    user_id = update.inline_query.from_user.id
+
+    logger.info(f"Received inline query: {query} from user ID: {user_id}")
+
+    # Search for the message with the given unique ID in the database
+    c.execute('SELECT unique_id, original_message FROM comments WHERE unique_id = ?', (query,))
+    result = c.fetchone()
+
+    inline_results = []
+
+    if result:
+        unique_id, original_message = result
+
+        # Create the inline keyboard buttons
+        reply_button = InlineKeyboardButton("Reply", url=f"https://t.me/yam_fm_bot")
+        share_button = InlineKeyboardButton("Share", switch_inline_query=unique_id)
+        reply_markup = InlineKeyboardMarkup([[reply_button], [share_button]])
+
+        # Generate the result article
+        inline_results.append(
+            InlineQueryResultArticle(
+                id=str(uuid4()),
+                title="Special Message",
+                input_message_content=InputTextMessageContent(f"Special Message ID: {unique_id}\n{original_message}"),
+                reply_markup=reply_markup,
+                description=original_message
+            )
+        )
+    else:
+        logger.warning(f"No special message found with ID: {query}")
+
+    await update.inline_query.answer(inline_results)
+    logger.info(f"Sent inline query results for user ID: {user_id}")
+
 # Message handler
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle regular messages."""
@@ -119,6 +176,7 @@ def setup_database():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             unique_id TEXT,
             original_message TEXT,
+            user_id INTEGER,
             comment TEXT
         )
     ''')
@@ -142,9 +200,13 @@ def main() -> None:
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("create", create_command))
     application.add_handler(CommandHandler("comment", comment_command))
+    application.add_handler(CommandHandler("view", view_command))
 
     # On non-command i.e., message - handle the message
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+    # Inline query handler
+    application.add_handler(InlineQueryHandler(inline_query))
 
     # Run the bot until the user presses Ctrl-C
     application.run_polling(allowed_updates=Update.ALL_TYPES)
