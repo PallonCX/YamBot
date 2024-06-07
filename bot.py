@@ -9,6 +9,11 @@ from uuid import uuid4
 # Command handler
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
+    if not update.message:
+        logger.info(f"User edited a message: {update.edited_message.text}")
+        await update.edited_message.reply_text("Notice that you may have edited a message recently, it won't affect anything on me. Please make a command in a new message.")
+        return
+
     logger.info("Received /start command")
     
     welcome_message = (
@@ -33,6 +38,11 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 async def create_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle the /create command."""
+    if not update.message:
+        logger.info(f"User edited a message: {update.edited_message.text}")
+        await update.edited_message.reply_text("Notice that you may have edited a message recently, it won't affect anything on me. Please make a command in a new message.")
+        return
+    
     logger.info("Received /create command")
     original_message = update.message.text[8:]  # Remove the '/create ' part
 
@@ -72,6 +82,11 @@ async def create_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 async def comment_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle the /comment command."""
+    if not update.message:
+        logger.info(f"User edited a message: {update.edited_message.text}")
+        await update.edited_message.reply_text("Notice that you may have edited a message recently, it won't affect anything on me. Please make a command in a new message.")
+        return
+    
     logger.info("Received /comment command")
     message_text = update.message.text[9:]  # Remove the '/comment ' part
 
@@ -105,6 +120,11 @@ async def comment_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 async def view_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle the /view command."""
+    if not update.message:
+        logger.info(f"User edited a message: {update.edited_message.text}")
+        await update.edited_message.reply_text("Notice that you may have edited a message recently, it won't affect anything on me. Please make a command in a new message.")
+        return
+    
     logger.info("Received /view command")
     user_id = update.message.from_user.id
 
@@ -122,6 +142,11 @@ async def view_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 async def result_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle the /result command."""
+    if not update.message:
+        logger.info(f"User edited a message: {update.edited_message.text}")
+        await update.edited_message.reply_text("Notice that you may have edited a message recently, it won't affect anything on me. Please make a command in a new message.")
+        return
+    
     logger.info("Received /result command")
     user_id = update.message.from_user.id
     command_parts = update.message.text.split()
