@@ -6,18 +6,30 @@ from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandl
 from telegram import InlineQueryResultArticle
 from uuid import uuid4
 
-# Command handlers
+# Command handler
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
     logger.info("Received /start command")
-    keyboard = [
-        [InlineKeyboardButton("Create", callback_data="create")],
-        [InlineKeyboardButton("Comment", callback_data="comment")],
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    welcome_message = (
+        "**Welcome to YamBot!**\n\n"
+        "I'm here to help you create and manage special messages that others can comment on. Here's a quick guide to get you started with the available commands:\n\n"
+        "**Commands:**\n\n"
+        "- **/start** - Get some guide. (Especially useful if you are new to YamBot!)\n"
+        "  - *Format:* `/start`\n\n"
+        "- **/create** - Create a new special message for others to comment on.\n"
+        "  - *Format:* `/create <message content>`\n\n"
+        "- **/comment** - Add a comment to a previously created special message.\n"
+        "  - *Format:* `/comment <message id> <comment content>`\n\n"
+        "- **/view** - See all special messages that you created.\n"
+        "  - *Format:* `/view`\n\n"
+        "- **/result** - See all comments of a special message that you created.\n"
+        "  - *Format:* `/result <message id>`\n\n"
+        "Feel free to use any of these commands to interact with me. If you have any questions or need further assistance, just type `/start` to get more detailed guidance. Enjoy using YamBot!"
+    )
 
-    await update.message.reply_text("Welcome! Choose an option:", reply_markup=reply_markup)
-    logger.info("Sent start command reply with options")
+    await update.message.reply_text(welcome_message, parse_mode="Markdown")
+    logger.info("Sent start command reply")
 
 async def create_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle the /create command."""
@@ -76,7 +88,7 @@ async def comment_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             logger.info(f"Found special message with ID: {unique_id}")
 
             # Append the new comment to the existing comment
-            new_comment = f"{existing_comment}\n{comment_text}" if existing_comment else comment_text
+            new_comment = f"{existing_comment} >\"<{comment_text}" if existing_comment else comment_text
 
             # Update the comment field in the database
             c.execute('UPDATE comments SET comment = ? WHERE unique_id = ?', (new_comment, unique_id))
@@ -107,6 +119,35 @@ async def view_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     else:
         await update.message.reply_text("You haven't created any special messages yet.")
         logger.info(f"No special messages found for user ID: {user_id}")
+
+async def result_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle the /result command."""
+    logger.info("Received /result command")
+    user_id = update.message.from_user.id
+    command_parts = update.message.text.split()
+
+    if len(command_parts) == 2:
+        unique_id = command_parts[1]
+
+        # Check if the user is the creator of the special message
+        c.execute('SELECT original_message, comment FROM comments WHERE unique_id = ? AND user_id = ?', (unique_id, user_id))
+        result = c.fetchone()
+
+        if result:
+            original_message, comments = result
+            logger.info(f"Found special message with ID: {unique_id} for user ID: {user_id}")
+
+            if comments:
+                comments_text = comments.replace('>"<', '\n')
+                await update.message.reply_text(f"Comments for your special message '{original_message}':\n\n{comments_text}")
+            else:
+                await update.message.reply_text(f"No comments given for your special message '{original_message}'.")
+        else:
+            logger.warning(f"User ID: {user_id} is not the creator of message ID: {unique_id} or no such message exists")
+            await update.message.reply_text("You are not the creator of this special message or it does not exist.")
+    else:
+        logger.warning("Invalid command format for /result command")
+        await update.message.reply_text("Invalid command format. Use /result <unique_id>")
 
 async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle the inline query."""
@@ -201,6 +242,7 @@ def main() -> None:
     application.add_handler(CommandHandler("create", create_command))
     application.add_handler(CommandHandler("comment", comment_command))
     application.add_handler(CommandHandler("view", view_command))
+    application.add_handler(CommandHandler("result", result_command))  # Add this line
 
     # On non-command i.e., message - handle the message
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
