@@ -15,6 +15,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         return
 
     logger.info("Received /start command")
+    increment_command_count("/start")
     
     welcome_message = (
         "**Welcome to YamBot!**\n\n"
@@ -44,6 +45,7 @@ async def create_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
     
     logger.info("Received /create command")
+    increment_command_count("/create")
     original_message = update.message.text[8:]  # Remove the '/create ' part
 
     if original_message:
@@ -88,6 +90,7 @@ async def comment_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return
     
     logger.info("Received /comment command")
+    increment_command_count("/comment")
     message_text = update.message.text[9:]  # Remove the '/comment ' part
 
     # Split the message text into unique_id and comment_text
@@ -126,12 +129,13 @@ async def view_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
     
     logger.info("Received /view command")
+    increment_command_count("/view")
     user_id = update.message.from_user.id
 
     # Query the database for messages created by this user
     c.execute('SELECT unique_id, original_message FROM comments WHERE user_id = ?', (user_id,))
     results = c.fetchall()
-
+    
     if results:
         messages = "\n\n".join([f"ID: {unique_id}\n{original_message}" for unique_id, original_message in results])
         await update.message.reply_text(f"Here are your special messages:\n\n{messages}")
@@ -148,6 +152,7 @@ async def result_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
     
     logger.info("Received /result command")
+    increment_command_count("/result")
     user_id = update.message.from_user.id
     command_parts = update.message.text.split()
 
@@ -214,6 +219,8 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 # Message handler
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle regular messages."""
+    increment_command_count("/regular")
+
     if update.message:
         logger.info(f"Received regular message: {update.message.text}")
         await update.message.reply_text("This is a regular message.")
@@ -246,8 +253,21 @@ def setup_database():
             comment TEXT
         )
     ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS command_counts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            command TEXT UNIQUE,
+            count INTEGER DEFAULT 0
+        )
+    ''')
     conn.commit()
     return conn, c
+
+# Increment command count
+def increment_command_count(command):
+    """Increment the count for the specified command."""
+    c.execute('INSERT INTO command_counts (command, count) VALUES (?, 1) ON CONFLICT(command) DO UPDATE SET count = count + 1', (command,))
+    conn.commit()
 
 # Set up logging
 logger = setup_logger()
