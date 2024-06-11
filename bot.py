@@ -5,6 +5,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputTe
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, InlineQueryHandler, filters
 from telegram import InlineQueryResultArticle
 from uuid import uuid4
+import random
 
 # Command handler
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -18,7 +19,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     increment_command_count("/start")
     
     welcome_message = (
-        "**Welcome to YamBot!**\n\n"
+        "**I'm Yam Yam!**\n\n"
         "I'm here to help you create and manage special messages that others can comment on. Here's a quick guide to get you started with the available commands:\n\n"
         "**Commands:**\n\n"
         "- **/start** - Get some guide. (Especially useful if you are new to YamBot!)\n"
@@ -216,6 +217,10 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await update.inline_query.answer(inline_results)
     logger.info(f"Sent inline query results for user ID: {user_id}")
 
+def random_case(char):
+    """Randomly converts the given character to uppercase or lowercase."""
+    return char.upper() if random.choice([True, False]) else char.lower()
+
 # Message handler
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle regular messages."""
@@ -223,7 +228,24 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     if update.message:
         logger.info(f"Received regular message: {update.message.text}")
-        await update.message.reply_text("This is a regular message.")
+        
+        # Generate a random number between 1 and 10
+        yam_count = random.randint(1, 10)
+        
+        # List of possible endings
+        endings = ['.', '?', '!']
+        
+        # Create the reply message with variations
+        yams = []
+        for _ in range(yam_count):
+            yam = "Yam"
+            randomized_yam = ''.join(random_case(c) for c in yam)
+            yams.append(randomized_yam)
+        
+        # Join yams and add a random ending
+        reply_message = " ".join(yams) + random.choice(endings)
+        
+        await update.message.reply_text(reply_message)
     else:
         logger.info(f"User edited a message: {update.edited_message.text}")
         await update.edited_message.reply_text("Notice that you may have edited a message recently, it won't affect anything on me. Please make a command in a new message.")
