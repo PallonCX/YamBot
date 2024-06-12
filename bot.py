@@ -32,7 +32,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         "  - *Format:* `/view`\n\n"
         "- **/result** - See all comments of a special message that you created.\n"
         "  - *Format:* `/result <message id>`\n\n"
-        "Feel free to use any of these commands to interact with me. If you have any questions or need further assistance, just type `/start` to get more detailed guidance. Enjoy using YamBot!"
+        "Feel free to use any of these commands to interact with me. If you have any questions or need further assistance, just type `/help` to get more detailed guidance. Enjoy using YamBot!"
     )
 
     await update.message.reply_text(welcome_message, parse_mode="Markdown")
@@ -180,6 +180,17 @@ async def result_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         logger.warning("Invalid command format for /result command")
         await update.message.reply_text("Invalid command format. Use /result <unique_id>")
 
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send a message when the command /help is issued."""
+    logger.info("Received /help command")
+    increment_command_count("/help")
+    
+    help_message = (
+        "For more information and detailed instructions, please visit our [blog guide](https://example.com/help)."
+    )
+    await update.message.reply_text(help_message, parse_mode="Markdown")
+    logger.info("Sent help command reply")
+
 async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle the inline query."""
     query = update.inline_query.query
@@ -309,7 +320,8 @@ def main() -> None:
     application.add_handler(CommandHandler("create", create_command))
     application.add_handler(CommandHandler("comment", comment_command))
     application.add_handler(CommandHandler("view", view_command))
-    application.add_handler(CommandHandler("result", result_command))  # Add this line
+    application.add_handler(CommandHandler("result", result_command))
+    application.add_handler(CommandHandler("help", help_command))
 
     # On non-command i.e., message - handle the message
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
