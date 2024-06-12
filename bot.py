@@ -206,7 +206,7 @@ async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             InlineQueryResultArticle(
                 id=str(uuid4()),
                 title="Special Message",
-                input_message_content=InputTextMessageContent(f"Special Message ID: {unique_id}\n{original_message}"),
+                input_message_content=InputTextMessageContent(f"{original_message}\n\nSpecial Message ID: {unique_id}"),
                 reply_markup=reply_markup,
                 description=original_message
             )

@@ -9,6 +9,7 @@ __pycache__/
 
 # Ignore local database files
 comments.db
+.DS_Store
 
 # Ignore image folder
 img
