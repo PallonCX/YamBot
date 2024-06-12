@@ -1,6 +1,17 @@
 # YamBot
 
-YamBot is a Telegram bot.
+YamBot is a versatile Telegram bot designed to help users create and manage special messages that others can comment on. It provides a user-friendly interface for creating messages, adding comments, viewing created messages, and more.
+
+Complete documentation can be found on my [blog guide](https://pallontan.wixsite.com/pallon/post/yambot-my-first-telegram-bot).
+
+## Features
+
+- **Create Special Messages**: Users can create unique messages that others can comment on.
+- **Add Comments**: Users can add comments to existing special messages.
+- **View Messages**: Users can view all special messages they have created.
+- **Manage Comments**: Users can see all comments for their created messages.
+- **Delete Messages**: Users can delete their own special messages if needed.
+- **Inline Query Support**: Users can share and reply to messages using inline queries.
 
 ## Requirements
 
@@ -14,13 +25,7 @@ To run YamBot, you'll need:
 
     Replace `"your_telegram_bot_token"` with your actual Telegram bot token.
 
-2. **Environment Setup**: Ensure that you have a Python environment set up with all the required libraries installed. You can install these libraries using pip:
-
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-    Note: The `requirements.txt` file contains a list of Python libraries required by YamBot. These libraries are not included in the repository to keep it lightweight. Make sure to install them in your environment before running the bot.
+2. **Environment Setup**: Ensure that you have a Python environment set up with all the required libraries installed. 
 
 ## Usage
 

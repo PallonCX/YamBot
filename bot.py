@@ -225,7 +225,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     increment_command_count("/help")
     
     help_message = (
-        "For more information and detailed instructions, please visit our [blog guide](https://example.com/help)."
+        "For more information and detailed instructions, please visit our [blog guide](https://pallontan.wixsite.com/pallon/post/yambot-my-first-telegram-bot)."
     )
     await update.message.reply_text(help_message, parse_mode="Markdown")
     logger.info("Sent help command reply")
