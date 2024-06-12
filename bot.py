@@ -28,10 +28,12 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         "  - *Format:* `/create <message content>`\n\n"
         "- **/comment** - Add a comment to a previously created special message.\n"
         "  - *Format:* `/comment <message id> <comment content>`\n\n"
-        "- **/view** - See all special messages that you created.\n"
-        "  - *Format:* `/view`\n\n"
         "- **/result** - See all comments of a special message that you created.\n"
         "  - *Format:* `/result <message id>`\n\n"
+        "- **/view** - See all special messages that you created.\n"
+        "  - *Format:* `/view`\n\n"
+        "- **/delete** - Delete a special message that you created.\n"
+        "  - *Format:* `/delete <message id>`\n\n"
         "Feel free to use any of these commands to interact with me. If you have any questions or need further assistance, just type `/help` to get more detailed guidance. Enjoy using YamBot!"
     )
 
@@ -120,30 +122,7 @@ async def comment_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             await update.message.reply_text("Invalid special message ID. Please provide a valid ID.")
     else:
         logger.warning("Invalid command format for /comment command")
-        await update.message.reply_text("Invalid command format. Use /comment <unique_id> <comment_text>")
-
-async def view_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle the /view command."""
-    if not update.message:
-        logger.info(f"User edited a message: {update.edited_message.text}")
-        await update.edited_message.reply_text("Notice that you may have edited a message recently, it won't affect anything on me. Please make a command in a new message.")
-        return
-    
-    logger.info("Received /view command")
-    increment_command_count("/view")
-    user_id = update.message.from_user.id
-
-    # Query the database for messages created by this user
-    c.execute('SELECT unique_id, original_message FROM comments WHERE user_id = ?', (user_id,))
-    results = c.fetchall()
-    
-    if results:
-        messages = "\n\n".join([f"ID: {unique_id}\n{original_message}" for unique_id, original_message in results])
-        await update.message.reply_text(f"Here are your special messages:\n\n{messages}")
-        logger.info(f"Sent list of special messages to user ID: {user_id}")
-    else:
-        await update.message.reply_text("You haven't created any special messages yet.")
-        logger.info(f"No special messages found for user ID: {user_id}")
+        await update.message.reply_text("Invalid command format. Use /comment <message_id> <comment_content>")
 
 async def result_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle the /result command."""
@@ -178,7 +157,67 @@ async def result_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             await update.message.reply_text("You are not the creator of this special message or it does not exist.")
     else:
         logger.warning("Invalid command format for /result command")
-        await update.message.reply_text("Invalid command format. Use /result <unique_id>")
+        await update.message.reply_text("Invalid command format. Use /result <message_id>")
+
+async def view_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle the /view command."""
+    if not update.message:
+        logger.info(f"User edited a message: {update.edited_message.text}")
+        await update.edited_message.reply_text("Notice that you may have edited a message recently, it won't affect anything on me. Please make a command in a new message.")
+        return
+    
+    logger.info("Received /view command")
+    increment_command_count("/view")
+    user_id = update.message.from_user.id
+
+    # Query the database for messages created by this user
+    c.execute('SELECT unique_id, original_message FROM comments WHERE user_id = ?', (user_id,))
+    results = c.fetchall()
+    
+    if results:
+        messages = "\n\n".join([f"ID: {unique_id}\n{original_message}" for unique_id, original_message in results])
+        await update.message.reply_text(f"Here are your special messages:\n\n{messages}")
+        logger.info(f"Sent list of special messages to user ID: {user_id}")
+    else:
+        await update.message.reply_text("You haven't created any special messages yet.")
+        logger.info(f"No special messages found for user ID: {user_id}")
+
+async def delete_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle the /delete command."""
+    if not update.message:
+        logger.info(f"User edited a message: {update.edited_message.text}")
+        await update.edited_message.reply_text(
+            "Notice that you may have edited a message recently, it won't affect anything on me. Please make a command in a new message."
+        )
+        return
+    
+    logger.info("Received /delete command")
+    increment_command_count("/delete")
+    command_parts = update.message.text.split()
+
+    if len(command_parts) == 2:
+        unique_id = command_parts[1]
+        user_id = update.message.from_user.id
+
+        # Check if the user is the creator of the special message
+        c.execute('SELECT id FROM comments WHERE unique_id = ? AND user_id = ?', (unique_id, user_id))
+        result = c.fetchone()
+
+        if result:
+            logger.info(f"User ID: {user_id} is the creator of message ID: {unique_id}")
+
+            # Delete the message from the database
+            c.execute('DELETE FROM comments WHERE unique_id = ? AND user_id = ?', (unique_id, user_id))
+            conn.commit()
+            logger.info(f"Deleted special message with ID: {unique_id}")
+
+            await update.message.reply_text(f"Special message with ID: {unique_id} has been deleted.")
+        else:
+            logger.warning(f"User ID: {user_id} is not the creator of message ID: {unique_id} or no such message exists")
+            await update.message.reply_text("You are not the creator of this special message or it does not exist.")
+    else:
+        logger.warning("Invalid command format for /delete command")
+        await update.message.reply_text("Invalid command format. Use /delete <message_id>")
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
@@ -322,6 +361,7 @@ def main() -> None:
     application.add_handler(CommandHandler("view", view_command))
     application.add_handler(CommandHandler("result", result_command))
     application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("delete", delete_command))
 
     # On non-command i.e., message - handle the message
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
